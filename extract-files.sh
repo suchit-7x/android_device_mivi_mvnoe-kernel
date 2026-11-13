@@ -117,9 +117,15 @@ find "${extract_out}/dtbs" -type f -name "*.dtb" \
     -exec printf "  - dtbs/" \; \
     -exec basename {} \;
 
-# DTBO (no patching, copied as-is from the dump)
+# DTBO (truncated to actual table size from header)
 cp "$DUMP/dtbo.img" ./images/dtbo.img
-echo "    + Copied images/dtbo.img"
+dtbo_size=$(python3 -c "import struct; f=open('./images/dtbo.img', 'rb'); f.seek(4); print(struct.unpack('>I', f.read(4))[0])" 2>/dev/null || true)
+if [[ -n "$dtbo_size" && "$dtbo_size" -gt 0 ]]; then
+    truncate -s "$dtbo_size" ./images/dtbo.img
+    echo "    + Copied and trimmed images/dtbo.img ($dtbo_size bytes)"
+else
+    echo "    + Copied images/dtbo.img"
+fi
 
 rm -rf $extract_out
 echo "Extracted files successfully"
